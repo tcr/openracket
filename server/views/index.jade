@@ -1,0 +1,174 @@
+extends layout
+
+block content
+  style
+
+    body.flashon { background: yellow; }
+    body.flashoff { -webkit-transition: background 0.4s; }
+
+    svg {
+    font: 10px sans-serif;
+    }
+    .line {
+    fill: none;
+    stroke: red;
+    stroke-width: 3px;
+    }
+    .baseline {
+    fill: none;
+    stroke: blue;
+    stroke-width: 1px;
+    }
+    .axis path,
+    .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+    }
+    #map-box { margin: 0 0 0 50%; position: relative; left: -500px; }
+
+    body, h1, h2 { font-family: Helvetica Neue; 
+      text-align: center;
+      font-weight: 100; }
+
+    h1 {
+      font-size: 4em;
+      padding-bottom: 20px;
+    }
+
+    h2 { margin-top: 50px; margin-bottom:-30px; font-weight: 200}
+
+
+  h1 <b>OpenRacket:</b> Open Source Racket
+    //
+       /.navbar-collapse 
+  .row(style='padding-bottom: 15px;')
+    #map-box.col-md-8.col-md-offset-1
+
+  script(src='/javascripts/bootstrap.min.js')
+  script(src='/javascripts/d3.v3.min.js')
+  script(src='/javascripts/topojson.v1.min.js')
+  script
+    var n = 80,
+      random = d3.random.normal(0, 0),
+      data = d3.range(n).map(random);
+      baseline = d3.range(n).map(d3.random.normal(1, 0));
+    var margin = {top: 20, right: 20, bottom: 20, left: 40},
+      width = 960 - margin.left - margin.right,
+      height = 300 - margin.top - margin.bottom;
+    
+    var x = d3.scale.linear()
+      .domain([1, n - 2])
+      .range([0, width]);
+    var y = d3.scale.linear()
+      .domain([0, 4])
+      .range([height, 0]);
+    var line = d3.svg.line()
+      .interpolate("basis")
+      .x(function(d, i) { return x(i); })
+      .y(function(d, i) { return y(d); });
+    var svg = d3.select("#map-box").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    svg.append("defs").append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height);
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + y(0) + ")")
+      .call(d3.svg.axis().scale(x).orient("bottom"));
+    svg.append("g")
+      .attr("class", "y axis")
+      .call(d3.svg.axis().scale(y).orient("left"));
+    var path = svg.append("g")
+      .attr("clip-path", "url(#clip)")
+      .append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", line);
+    var path2 = svg.append("g")
+      .attr("clip-path", "url(#clip)")
+      .append("path")
+      .datum(baseline)
+      .attr("class", "baseline")
+      .attr("d", line);
+
+    var val = 0;
+    tick();
+
+    function tick() {
+      // push a new data point onto the back
+      data.push(val);
+      // redraw the line, and slide it to the left
+      path
+        .attr("d", line)
+        .attr("transform", null)
+        .transition()
+        .duration(50)
+        .ease("linear")
+        .attr("transform", "translate(" + x(0) + ",0)")
+        .each("end", tick);
+      // pop the old data point off the front
+      data.shift();
+    }
+
+  script(src="/socket.io/socket.io.js")
+  script.
+    var socket = io.connect('http://localhost');
+    socket.on('news', function (time, data) {
+      console.log(time,data);
+      val = Math.sqrt(data[0]*data[0] + data[1]*data[1] + data[2]*data[2]);
+      if (val > 2.3) {
+        document.body.className = 'flashon';
+        setTimeout(function () {
+          document.body.className = 'flashoff'
+        }, 0);
+      }
+    });
+
+  h2 The Racket: <b>18 lines of JavaScript</b>
+  div.javascript(style="width: 55em; margin: 50px auto; text-align: left;")
+    pre.javascript(style="padding: 0;")
+      code.code-javascript(style="padding: 25px 30px").
+        // Connect to accelerometer.
+        var tessel = require('tessel');
+        var accel = require('accel-mma84').connect(tessel.port('a'));
+
+        // Open UDP socket.
+        var dgram = require('dgram');
+        var udp = dgram.createSocket('upd4');
+
+        accel.on('connected', function () {
+          // Loop forever.
+          setImmediate(function loop () {
+            accel.getAcceleration(function (err, xyz) {
+              // Send packet.
+              udp.send('192.168.1.149', 4444, '[' + xyz.x + ',' + xyz.y + ',' + xyz.z + ']')
+              setImmediate(loop);
+            });
+          });
+        });
+
+  script.
+    $(document).ready(function() {
+      $('pre code').each(function(i, e) {hljs.highlightBlock(e)});
+    });
+
+  img(src="/images/cool.png", style="margin: 80px 0 150px; width: 800px")
+
+  p(style="font-size: 1000%; color: #f08; line-height: 0.4; margin-bottom: 160px")
+    | $100* <small style="font-size: 0.3em">MSRP</small><br><small style="font-size: 24px">*estimated retail cost</small>
+
+  h2
+    a(href="http://github.com/tcr/openracket", style="display: block; width: 900px; padding: 40px 0 80px; border-radius: 10px; margin: 0 auto;")
+      | <b>Tessel</b> available on <u>http://tessel.io</u> &rarr;</small>
+    a(href="http://github.com/tcr/openracket", style="display: block; background: #ddd; width: 900px; padding: 20px 0; border-radius: 10px; margin: 0 auto;")
+      | Code available on Github &rarr;<br><small style="color: #444;">http://github.com/tcr/openracket</small>
+
+  p(style="font-size: 24px; margin-top: 100px") OpenRacket, a project by Juliana and Tim.
+
+  div(style="height: 300px")
